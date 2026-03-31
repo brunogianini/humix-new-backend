@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  displayName  String?
+  bio          String?
+  avatarUrl    String?
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reviews     Review[]
+  userAlbums  UserAlbum[]
+  followers   Follow[]  @relation("following")
+  following   Follow[]  @relation("follower")
+  streaks     Streak[]
+
+  @@index([username])
+  @@index([email])
+}
+
+model Artist {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  bio         String?
+  imageUrl    String?
+  country     String?
+  formedYear  Int?
+  dissolvedYear Int?
+  spotifyId   String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  albums  Album[]
+  genres  ArtistGenre[]
+
+  @@index([slug])
+  @@index([name])
+}
+
+model Genre {
+  id   String @id @default(cuid())
+  name String @unique
+  slug String @unique
+
+  albums  AlbumGenre[]
+  artists ArtistGenre[]
+
+  @@index([slug])
+}
+
+model Album {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  artistId    String
+  releaseYear Int?
+  releaseDate DateTime?
+  coverUrl    String?
+  totalTracks Int?
+  description String?
+  spotifyId   String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  artist     Artist      @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  genres     AlbumGenre[]
+  tracks     Track[]
+  reviews    Review[]
+  userAlbums UserAlbum[]
+
+  @@index([slug])
+  @@index([artistId])
+  @@index([releaseYear])
+}
+
+model Track {
+  id        String  @id @default(cuid())
+  albumId   String
+  title     String
+  number    Int
+  duration  Int?
+  createdAt DateTime @default(now())
+
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@index([albumId])
+}
+
+model AlbumGenre {
+  albumId String
+  genreId String
+
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([albumId, genreId])
+}
+
+model ArtistGenre {
+  artistId String
+  genreId  String
+
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  genre  Genre  @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([artistId, genreId])
+}
+
+model Review {
+  id         String    @id @default(cuid())
+  userId     String
+  albumId    String
+  rating     Float
+  content    String?
+  listenedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, albumId])
+  @@index([userId])
+  @@index([albumId])
+  @@index([rating])
+}
+
+model UserAlbum {
+  userId    String
+  albumId   String
+  status    AlbumStatus @default(WANT_TO_LISTEN)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@id([userId, albumId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Streak {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime @db.Date
+  albumId   String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+enum AlbumStatus {
+  WANT_TO_LISTEN
+  LISTENING
+  LISTENED
+}
