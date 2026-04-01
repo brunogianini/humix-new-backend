@@ -150,6 +150,7 @@ model UserAlbum {
   @@id([userId, albumId])
   @@index([userId])
   @@index([status])
+  @@index([userId, status])
 }
 
 model Follow {

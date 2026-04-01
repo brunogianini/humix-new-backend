@@ -37,11 +37,20 @@ export async function unfollow(followerId: string, targetUsername: string) {
 export async function getFeed(userId: string, page: number, limit: number) {
   const skip = (page - 1) * limit;
 
+  const followed = await prisma.follow.findMany({
+    where: { followerId: userId },
+    select: { followingId: true },
+  });
+
+  if (!followed.length) {
+    return { data: [], meta: { total: 0, page, limit, totalPages: 0, hasNext: false, hasPrev: false } };
+  }
+
+  const userIds = followed.map((f) => f.followingId);
+
   const [reviews, total] = await Promise.all([
     prisma.review.findMany({
-      where: {
-        user: { followers: { some: { followerId: userId } } },
-      },
+      where: { userId: { in: userIds } },
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
@@ -62,9 +71,7 @@ export async function getFeed(userId: string, page: number, limit: number) {
         },
       },
     }),
-    prisma.review.count({
-      where: { user: { followers: { some: { followerId: userId } } } },
-    }),
+    prisma.review.count({ where: { userId: { in: userIds } } }),
   ]);
 
   const totalPages = Math.ceil(total / limit);

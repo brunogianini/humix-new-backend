@@ -1,56 +1,39 @@
 import { prisma } from '../../database/prisma';
 
 export async function getTopArtists(limit = 10) {
-  const result = await prisma.review.groupBy({
-    by: ['albumId'],
-    _count: { albumId: true },
-    _avg: { rating: true },
-    orderBy: { _count: { albumId: 'desc' } },
-    take: limit * 3,
+  type ArtistRow = { id: string; name: string; slug: string; imageUrl: string | null; reviewCount: number; avgRating: number };
+  const rows = await prisma.$queryRaw<ArtistRow[]>`
+    SELECT
+      a.id, a.name, a.slug, a."imageUrl",
+      COUNT(r.id)::int AS "reviewCount",
+      AVG(r.rating)::float AS "avgRating"
+    FROM "Review" r
+    JOIN "Album" al ON al.id = r."albumId"
+    JOIN "Artist" a ON a.id = al."artistId"
+    GROUP BY a.id, a.name, a.slug, a."imageUrl"
+    ORDER BY "reviewCount" DESC
+    LIMIT ${limit}
+  `;
+
+  if (!rows.length) return [];
+
+  const artistIds = rows.map((r) => r.id);
+  const genreRows = await prisma.artistGenre.findMany({
+    where: { artistId: { in: artistIds } },
+    select: { artistId: true, genre: { select: { name: true, slug: true } } },
   });
 
-  const albumIds = result.map((r) => r.albumId);
-  const albums = await prisma.album.findMany({
-    where: { id: { in: albumIds } },
-    select: { id: true, artistId: true },
-  });
-
-  const artistCounts = new Map<string, { count: number; totalRating: number; ratingCount: number }>();
-  for (const r of result) {
-    const album = albums.find((a) => a.id === r.albumId);
-    if (!album) continue;
-    const current = artistCounts.get(album.artistId) ?? { count: 0, totalRating: 0, ratingCount: 0 };
-    current.count += r._count.albumId;
-    current.totalRating += (r._avg.rating ?? 0) * r._count.albumId;
-    current.ratingCount += r._count.albumId;
-    artistCounts.set(album.artistId, current);
+  const genresByArtist = new Map<string, { name: string; slug: string }[]>();
+  for (const g of genreRows) {
+    const list = genresByArtist.get(g.artistId) ?? [];
+    list.push(g.genre);
+    genresByArtist.set(g.artistId, list);
   }
 
-  const sortedArtistIds = [...artistCounts.entries()]
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, limit)
-    .map(([id]) => id);
-
-  const artists = await prisma.artist.findMany({
-    where: { id: { in: sortedArtistIds } },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      imageUrl: true,
-      genres: { select: { genre: { select: { name: true, slug: true } } } },
-    },
-  });
-
-  return artists.map((artist) => {
-    const stats = artistCounts.get(artist.id)!;
-    return {
-      ...artist,
-      genres: artist.genres.map((g) => g.genre),
-      reviewCount: stats.count,
-      avgRating: stats.ratingCount > 0 ? stats.totalRating / stats.ratingCount : 0,
-    };
-  });
+  return rows.map((artist) => ({
+    ...artist,
+    genres: genresByArtist.get(artist.id) ?? [],
+  }));
 }
 
 export async function getTopAlbums(limit = 10) {
@@ -133,21 +116,18 @@ export async function getUserStats(username: string) {
   const currentStreak = calculateCurrentStreak(streaks.map((s) => s.date));
   const longestStreak = calculateLongestStreak(streaks.map((s) => s.date));
 
-  const topGenres = await prisma.albumGenre.groupBy({
-    by: ['genreId'],
-    where: {
-      album: { reviews: { some: { userId: user.id } } },
-    },
-    _count: { genreId: true },
-    orderBy: { _count: { genreId: 'desc' } },
-    take: 5,
-  });
-
-  const genreIds = topGenres.map((g) => g.genreId);
-  const genres = await prisma.genre.findMany({
-    where: { id: { in: genreIds } },
-    select: { id: true, name: true, slug: true },
-  });
+  type GenreRow = { id: string; name: string; slug: string; count: number };
+  const topGenres = await prisma.$queryRaw<GenreRow[]>`
+    SELECT g.id, g.name, g.slug, COUNT(*)::int AS count
+    FROM "AlbumGenre" ag
+    JOIN "Genre" g ON g.id = ag."genreId"
+    WHERE ag."albumId" IN (
+      SELECT "albumId" FROM "Review" WHERE "userId" = ${user.id}
+    )
+    GROUP BY g.id, g.name, g.slug
+    ORDER BY count DESC
+    LIMIT 5
+  `;
 
   return {
     reviewCount: reviews._count.id,
@@ -155,10 +135,7 @@ export async function getUserStats(username: string) {
     totalListened,
     currentStreak,
     longestStreak,
-    topGenres: genres.map((g) => ({
-      ...g,
-      count: topGenres.find((tg) => tg.genreId === g.id)?._count.genreId ?? 0,
-    })),
+    topGenres,
   };
 }
 
