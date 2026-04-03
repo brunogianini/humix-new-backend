@@ -1,3 +1,0 @@
-name = 'humix-new-backend'
-main = "dist/server.js"
-compatibility_date = "2026-04-02"
