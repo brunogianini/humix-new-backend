@@ -1,6 +1,6 @@
 {
   "name": "humix",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Humix - Album management platform backend",
   "main": "dist/server.js",
   "scripts": {
