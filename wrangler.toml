@@ -1,0 +1,3 @@
+name = "humix"
+main = "dist/server.js"
+compatibility_date = "2026-04-02"
