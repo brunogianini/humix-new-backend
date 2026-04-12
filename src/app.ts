@@ -68,11 +68,11 @@ export function createApp() {
 
   // Routes
   app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/users', followsRoutes);
   app.use('/api/v1/users', usersRoutes);
   app.use('/api/v1/albums', albumsRoutes);
   app.use('/api/v1/artists', artistsRoutes);
   app.use('/api/v1/reviews', reviewsRoutes);
-  app.use('/api/v1/users', followsRoutes);
   app.use('/api/v1/stats', statsRoutes);
   app.use('/api/v1/streaks', streaksRoutes);
   app.use('/api/v1/spotify', spotifyRoutes);
