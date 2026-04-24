@@ -18,6 +18,7 @@ import followsRoutes from './modules/follows/follows.routes';
 import statsRoutes from './modules/stats/stats.routes';
 import streaksRoutes from './modules/streaks/streaks.routes';
 import spotifyRoutes from './modules/spotify/spotify.routes';
+import recommendationsRoutes from './modules/recommendations/recommendations.routes';
 
 export function createApp() {
   const app = express();
@@ -76,6 +77,7 @@ export function createApp() {
   app.use('/api/v1/stats', statsRoutes);
   app.use('/api/v1/streaks', streaksRoutes);
   app.use('/api/v1/spotify', spotifyRoutes);
+  app.use('/api/v1/recommendations', recommendationsRoutes);
 
   // 404
   app.use((_req, res) => {

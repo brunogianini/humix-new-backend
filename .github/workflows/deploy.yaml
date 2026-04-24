@@ -34,5 +34,15 @@ jobs:
             git reset --hard origin/main
 
             echo "Código atualizado!"
+
+            echo "Rodando build"
+
+            npm run build
+            
+            echo "Gerando banco local"
+            npm run db:generate
+
+            echo "Restartando aplicação"
+            pm2 restart all
           EOF
 
