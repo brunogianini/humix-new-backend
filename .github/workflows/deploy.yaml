@@ -23,7 +23,7 @@ jobs:
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
             - name: Conectar e rodar comandos
 
-
+      - name: Conectando no servidor
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             ls -la
