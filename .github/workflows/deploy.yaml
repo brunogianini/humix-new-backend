@@ -24,6 +24,6 @@ jobs:
 
       - name: Conectando no servidor
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh ubuntu@${{ secrets.SSH_HOST }} << 'EOF'
             ls -la
           EOF
