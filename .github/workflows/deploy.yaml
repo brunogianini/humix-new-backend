@@ -14,17 +14,16 @@ jobs:
         with:
           ref: main
 
-      - name: Configurar SSH
+      - name: Configurar SSH com agent
         run: |
+          eval "$(ssh-agent -s)"
+
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-add key <<< "${{ secrets.SSH_PASSPHRASE }}"
 
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          ssh-add ~/.ssh/id_rsa <<< "${{ secrets.SSH_PASSPHRASE }}"
 
-      - name: Conectando no servidor
-        run: |
-          ssh ubuntu@${{ secrets.SSH_HOST }} << 'EOF'
-            ls -la
-          EOF
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+          ssh ubuntu@${{ secrets.SSH_HOST }} "ls -la"
