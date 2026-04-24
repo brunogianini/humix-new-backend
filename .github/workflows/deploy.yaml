@@ -27,3 +27,13 @@ jobs:
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
 
           ssh ubuntu@${{ secrets.SSH_HOST }} "ls -la"
+
+      - name: Baixando atualizações
+        run: |
+          cd humix-new-backend
+
+          git fetch origin
+          git checkout main
+          git reset --hard origin/main
+
+          echo "Código atualizado!"
