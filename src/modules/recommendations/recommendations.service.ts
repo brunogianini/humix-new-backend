@@ -93,7 +93,7 @@ export async function getRecommendations(userId: string, limit = 10): Promise<Re
 
   // 2. Build preference maps
   const genreWeights = new Map<string, { weight: number; name: string; slug: string }>();
-  const artistScores = new Map<string, { maxRating: number; spotifyId: string | null }>();
+  const artistScores = new Map<string, { maxRating: number; spotifyId: string | null; name: string }>();
 
   for (const review of userReviews) {
     for (const g of review.album.genres) {
@@ -109,6 +109,7 @@ export async function getRecommendations(userId: string, limit = 10): Promise<Re
       artistScores.set(review.album.artistId, {
         maxRating: review.rating,
         spotifyId: review.album.artist.spotifyId,
+        name: review.album.artist.name,
       });
     }
   }
@@ -130,7 +131,6 @@ export async function getRecommendations(userId: string, limit = 10): Promise<Re
   // 4. Top artists/genres for Spotify searches
   const topArtists = [...artistScores.entries()]
     .sort((a, b) => b[1].maxRating - a[1].maxRating)
-    .filter(([, v]) => v.spotifyId !== null)
     .slice(0, TOP_N);
 
   const topGenres = [...genreWeights.entries()]
@@ -161,15 +161,16 @@ export async function getRecommendations(userId: string, limit = 10): Promise<Re
       },
       take: 300,
     }),
-    ...topArtists.map(([artistDbId, { spotifyId }]) =>
-      spotifyService
-        .getArtistAlbums(spotifyId!)
-        .then(
-          (albums): ArtistSearchResult => ({
-            artistDbId,
-            albums: albums.filter((a) => a.album_type === 'album').slice(0, 20),
-          }),
-        ),
+    ...topArtists.map(([artistDbId, { spotifyId, name }]) =>
+      (spotifyId
+        ? spotifyService.getArtistAlbums(spotifyId)
+        : spotifyService.searchAlbums(`artist:"${name}"`, 20)
+      ).then(
+        (albums): ArtistSearchResult => ({
+          artistDbId,
+          albums: albums.filter((a) => a.album_type === 'album').slice(0, 20),
+        }),
+      ),
     ),
     ...topGenres.map(([genreId, { name }]) =>
       spotifyService
