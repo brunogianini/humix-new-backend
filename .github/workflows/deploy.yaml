@@ -21,7 +21,6 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
 
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-            - name: Conectar e rodar comandos
 
       - name: Conectando no servidor
         run: |
